@@ -1,10 +1,10 @@
 name: Restore recovered Live Coach source
 
-# One-time recovery workflow. Safe to rerun; it only commits when restored files differ.
 on:
   push:
     branches: [main]
     paths:
+      - 'orvia-live-coach-recovery-05sep2026.zip'
       - '.github/workflows/restore-source.yml'
   workflow_dispatch:
 
@@ -18,20 +18,30 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v4
 
-      - name: Restore recovered text source
+      - name: Restore recovered source from Viktor export
+        shell: bash
         run: |
-          test -f recovery/source-text.tar.xz
-          tar -xJf recovery/source-text.tar.xz -C .
+          set -euo pipefail
+          ZIP='orvia-live-coach-recovery-05sep2026.zip'
+          test -f "$ZIP"
+          rm -rf /tmp/orvia-live-coach-recovery
+          mkdir -p /tmp/orvia-live-coach-recovery
+          unzip -q "$ZIP" -d /tmp/orvia-live-coach-recovery
+          SRC='/tmp/orvia-live-coach-recovery/orvia-live-coach-export'
+          test -d "$SRC"
+          rsync -a --exclude='.git/' "$SRC"/ ./
           git status --short
 
       - name: Commit restored source
+        shell: bash
         run: |
-          git config user.name "ORVIA Recovery Bot"
-          git config user.email "actions@users.noreply.github.com"
+          set -euo pipefail
+          git config user.name 'ORVIA Recovery Bot'
+          git config user.email 'actions@users.noreply.github.com'
           git add -A
           if git diff --cached --quiet; then
-            echo "No source changes to commit"
+            echo 'No source changes to commit'
             exit 0
           fi
-          git commit -m "Restore recovered ORVIA Live Coach Customer Zero source"
+          git commit -m 'Restore recovered ORVIA Live Coach Customer Zero source'
           git push origin HEAD:main
