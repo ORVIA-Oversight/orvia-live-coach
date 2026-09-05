@@ -1,0 +1,8 @@
+{
+  "name": "orvia-live-coach-recovery-bootstrap",
+  "private": true,
+  "version": "0.1.0",
+  "scripts": {
+    "build": "rm -rf .restored && mkdir .restored && tar -xJf recovery/source-text.tar.xz -C .restored && cd .restored && npm ci && npm run build"
+  }
+}
