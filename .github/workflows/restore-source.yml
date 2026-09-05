@@ -1,5 +1,6 @@
 name: Restore recovered Live Coach source
 
+# One-time recovery workflow. Safe to rerun; it only commits when restored files differ.
 on:
   push:
     branches: [main]
