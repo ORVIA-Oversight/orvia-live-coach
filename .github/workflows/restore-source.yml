@@ -5,7 +5,6 @@ on:
     branches: [main]
     paths:
       - 'orvia-live-coach-recovery-05sep2026.zip'
-      - '.github/workflows/restore-source.yml'
   workflow_dispatch:
 
 permissions:
@@ -15,20 +14,44 @@ jobs:
   restore:
     runs-on: ubuntu-latest
     steps:
+      - name: Safety gate - repository must be private
+        shell: bash
+        env:
+          REPOSITORY_PRIVATE: ${{ github.event.repository.private }}
+        run: |
+          set -euo pipefail
+          if [ "$REPOSITORY_PRIVATE" != "true" ]; then
+            echo '::error::Live Coach source restoration is blocked while repository visibility is not private.'
+            exit 1
+          fi
+
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
+
+      - name: Verify recovered archive
+        shell: bash
+        run: |
+          set -euo pipefail
+          ZIP='orvia-live-coach-recovery-05sep2026.zip'
+          test -f "$ZIP"
+          unzip -tq "$ZIP"
 
       - name: Restore recovered source from Viktor export
         shell: bash
         run: |
           set -euo pipefail
           ZIP='orvia-live-coach-recovery-05sep2026.zip'
-          test -f "$ZIP"
           rm -rf /tmp/orvia-live-coach-recovery
           mkdir -p /tmp/orvia-live-coach-recovery
           unzip -q "$ZIP" -d /tmp/orvia-live-coach-recovery
           SRC='/tmp/orvia-live-coach-recovery/orvia-live-coach-export'
           test -d "$SRC"
+
+          if find "$SRC" -type f \( -name '.env' -o -name '.env.local' -o -name '.env.production' -o -name '.env.development' \) -print -quit | grep -q .; then
+            echo '::error::Recovered export contains a runtime .env file. Restore stopped so secrets cannot be committed.'
+            exit 1
+          fi
+
           rsync -a --exclude='.git/' "$SRC"/ ./
           git status --short
 
